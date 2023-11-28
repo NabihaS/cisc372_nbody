@@ -45,7 +45,7 @@ void planetFill(){
 	for (i=0;i<=NUMPLANETS;i++){
 		for (j=0;j<3;j++){
 			hPos[i][j]=data[i][j];
-			hVel[i][j]=data[i][j+3];
+			hVel[i][j]=data[i][j+3];// why is this j+3?? bc the beginning of the vel is after the 3 dimensions of the pos in a planet in data
 		}
 		mass[i]=data[i][6];
 	}
