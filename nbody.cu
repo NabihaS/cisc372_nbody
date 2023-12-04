@@ -11,7 +11,7 @@
 vector3 *hVel, *d_Vel; // the d_ values are all for the device (GPU). but while youre doing mallocmanage maybe u only need one. declare this here or in compute?
 vector3 *hPos, *d_Pos;
 double *mass, *d_mass; 
-vector3* d_accelvalues; 
+vector3** d_accels;
 
 
 //initHostMemory: Create storage for numObjects entities in our system
@@ -36,19 +36,13 @@ void initDeviceMemory(int numObjects){
 	
 
 	// if we want to use two arrays, i.e. store pointers in accels
-	/* vector3** d_accels; */
-	/* cudaMalloc(&d_accels,sizeof(vector3)*numObjects); */
+	cudaMalloc(&d_accels,sizeof(vector3)*numObjects); 
 	// you have to cudamalloc for the arrays, and then initialize a temp array and malloc in it and copy it up i think
 	// its just that cudamalloc expects a cpu variable so you cant iterate thru ?
-	// ?? sets up the pointers
-	/* 
-	int i,j;
-	vector3* temp_accels;
-	for (i=0;i<NUMENTITIES;i++)
-		cudaMalloc(&temp_accels[i],sizeof(vector3)?);
-	*/
-	
-	cudaMalloc(&d_accelvalues,sizeof(vector3)*numObjects*numObjects); // cudamalloc returns a pointer to the CPU
+	vector3** temp_accels;
+	for (int i=0;i<NUMENTITIES;i++) cudaMalloc(&temp_accels[i],sizeof(vector3));
+	cudaMemcpy(d_accels, temp_accels, sizeof(vector3) * numObjects, cudaMemcpyHostToDevice); 
+
 	cudaMalloc(&d_Pos,sizeof(vector3) * numObjects);
 	cudaMalloc(&d_Vel,sizeof(vector3) * numObjects);
 	// cudaMalloc(&d_mass,sizeof(double) * numObjects);
@@ -89,7 +83,13 @@ void loadDeviceMemory(){
 void freeDeviceMemory(){
 	// if this was using 2 arrays, we would need a loop to iterate thru the accels array and then free
 	// "and even when you free it you have to bring it down to CPU in another temp accels and loop thru and free each part and then free the accels"
-	cudaFree(d_accelvalues);
+	// vector** temp_accels;
+	// cudaMemcpy ( temp_accels, d_accels, sizeof(vector3) * NUMENTITIES, cudaMemcpyDeviceToHost);
+	// for (int i = 0; i < NUMENTITIES; ++i)  free(temp_accels[i]); // is this just free? or cudafree
+   
+	// free(temp_accels);
+	cudaFree(d_accels);
+	
 	cudaFree(d_Pos);
 	cudaFree(d_Vel);
 	cudaFree(d_mass);

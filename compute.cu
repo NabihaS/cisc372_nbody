@@ -13,7 +13,7 @@
 
 
 	/*Kernel 2 computes arrays*/
-__global__ void computeAccels(vector3* d_accelvalues, vector3* d_Pos, double* d_mass){
+__global__ void computeAccels(vector3** d_accels, vector3* d_Pos, double* d_mass){
 	//first compute the pairwise accelerations.  Effect is on the first argument.
 	// we're just going to compute the index using our massive 1d array (our matrix, with the computed indices)
 	int i = blockIdx.x * blockDim.x + threadIdx.x; 
@@ -25,11 +25,11 @@ __global__ void computeAccels(vector3* d_accelvalues, vector3* d_Pos, double* d_
 	// z dimension?
 	// int z=threadIdx.z;
 	
-	// NOTE. CURRENTLY D_ACCELVALUES IS A 1D ARRAY SO YOU CANT DOUBLE [][] INDEX LIKE ITS A 2D ARRAY. SO ALL CHECKS NEED TO BE ACCORDING
+	//CHANGING TO 2D VALUES SO U CAN INDEX LIKE ITS A 2D ARRAY. SO ALL CHECKS NEED TO BE ACCORDING
 	// the 1d array is why i changed the i check to num SQUARED, bc thats the full range?
-	if (i < NUMENTITIES*NUMENTITIES && j < NUMENTITIES) { // this means that a specific thread in the allocated grids actually correspond w an entity, bc we may have extra blocks
+	if (i < NUMENTITIES && j < NUMENTITIES) { // this means that a specific thread in the allocated grids actually correspond w an entity, bc we may have extra blocks
 		if (i==j) {
-			FILL_VECTOR(d_accelvalues[i*NUMENTITIES+j],0,0,0); // cant use fill vector if u have k
+			FILL_VECTOR(d_accels[i][j],0,0,0); // cant use fill vector if u have k
 		}
 		else{
 			vector3 distance;
@@ -37,7 +37,7 @@ __global__ void computeAccels(vector3* d_accelvalues, vector3* d_Pos, double* d_
 			double magnitude_sq=distance[0]*distance[0]+distance[1]*distance[1]+distance[2]*distance[2];
 			double magnitude=sqrt(magnitude_sq);
 			double accelmag=-1*GRAV_CONSTANT*d_mass[j]/magnitude_sq;
-			FILL_VECTOR(d_accelvalues[i*NUMENTITIES+j],accelmag*distance[0]/magnitude,accelmag*distance[1]/magnitude,accelmag*distance[2]/magnitude);// this uses z index
+			FILL_VECTOR(d_accels[i][j],accelmag*distance[0]/magnitude,accelmag*distance[1]/magnitude,accelmag*distance[2]/magnitude);// this uses z index
 		}
 			
 		
@@ -47,7 +47,7 @@ __global__ void computeAccels(vector3* d_accelvalues, vector3* d_Pos, double* d_
 
 /*Kernel 3 does sums, and also updates values if reduction is not happening */
 
-__global__ void sumAccelsAndUpdate(vector3* d_accelvalues, vector3* d_Pos, vector3* d_Vel){ 
+__global__ void sumAccelsAndUpdate(vector3** d_accels, vector3* d_Pos, vector3* d_Vel){ 
 //sum up the rows of our matrix to get effect on each entity, then update velocity and position.
 // this is NOT a thread doing the smallest component yet 
 // launch a thread per column and just loop thru each column
@@ -64,11 +64,11 @@ int i = blockIdx.x * blockDim.x + threadIdx.x;
 // we dont need j right? for every "column" we're incrementing j from 0-num
 
 // does this actually need a start and end
-if (i < NUMENTITIES*NUMENTITIES) {
+if (i < NUMENTITIES) {
 	vector3 accel_sum={0,0,0};
 	for (int j=0;j<NUMENTITIES;j++){
 		for (int k=0;k<3;k++)
-			accel_sum[k]+=d_accelvalues[i*NUMENTITIES+j][k];
+			accel_sum[k]+=d_accels[i][j][k];
 	}
 
 	// Store the result in the accels array??
@@ -117,9 +117,9 @@ void compute(){
 
 	// why do you have to pass in the device variables if theyre allocated on the GPU
 	// need to fundamentally understand the relationship btwn compute.cu and nbody.cu files. what is being accessed
-	computeAccels<<<numBlocks, dimBlock>>>(d_accelvalues, d_Pos, d_mass);
-	sumAccelsAndUpdate<<<numBlocks, dimBlock>>>(d_accelvalues, d_Pos, d_Vel);
-	// update<<numBlocks, dimBlock<<(d_accelvalues,d_Pos, d_Vel);
+	computeAccels<<<numBlocks, dimBlock>>>(d_accels, d_Pos, d_mass);
+	sumAccelsAndUpdate<<<numBlocks, dimBlock>>>(d_accels, d_Pos, d_Vel);
+	// update<<numBlocks, dimBlock<<(d_accels,d_Pos, d_Vel);
 
 
 }
