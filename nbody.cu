@@ -129,7 +129,7 @@ void planetFill(){
 //Side Effects: Fills count entries in our system starting at index start (0 based)
 void randomFill(int start, int count)
 {
-	int i, j, c = start;
+	int i, j;
 	for (i = start; i < start + count; i++)
 	{
 		for (j = 0; j < 3; j++)
@@ -168,7 +168,6 @@ int main(int argc, char **argv)
 	//srand(time(NULL));
 	srand(1234);
 	initHostMemory(NUMENTITIES);
-	initDeviceMemory(NUMENTITIES);
 	planetFill();
 	randomFill(NUMPLANETS + 1, NUMASTEROIDS);
 	//now we have a system.
@@ -176,11 +175,13 @@ int main(int argc, char **argv)
 	printSystem(stdout);
 	printf("This is our solar system.\n");
 	#endif
+	initDeviceMemory(NUMENTITIES);
 	// Now we want to load what we need from our system into the device
 	loadDeviceMemory();
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){	
 		compute(); // we want all the memory transfers to happen outside of this loop
 	}
+	cudaDeviceSynchronize();
 	// copy relevant data to host. CPU is making this call and the CUDA API is handling the GPU actions
 	cudaMemcpy ( hPos, d_Pos, sizeof(vector3) * NUMENTITIES, cudaMemcpyDeviceToHost);
 	cudaMemcpy ( hVel, d_Vel, sizeof(vector3) * NUMENTITIES, cudaMemcpyDeviceToHost);
