@@ -23,8 +23,8 @@ __global__ void computeAccels(vector3* d_accelvalues, vector3* d_Pos, double* d_
 	// int z=threadIdx.z;
 	
 	// NOTE. CURRENTLY D_ACCELVALUES IS A 1D ARRAY SO YOU CANT DOUBLE [][] INDEX LIKE ITS A 2D ARRAY. SO ALL CHECKS NEED TO BE ACCORDING
-	// the 1d array is why i changed the i check to num SQUARED, bc thats the full range?
-	// -- soooooo this made everything return Nan for some reason
+	// Q: the 1d array is why i changed the i check to num SQUARED, bc thats the full range?
+	// -- okay so basically, we're not checking i against the whole array, we're seeing if i makes sense, so i may be under num*2 but be out of bounds for a row?
 	if (i < NUMENTITIES && j < NUMENTITIES) { // this means that a specific thread in the allocated grids actually correspond w an entity, bc we may have extra blocks
 		if (i==j) {
 			FILL_VECTOR(d_accelvalues[i*NUMENTITIES+j],0,0,0); // cant use fill vector if u have k
@@ -58,12 +58,10 @@ if you do __shared__ then all the threads in the block will be able to access th
 if you do separate out the sumaccels and update functions then yes u need
 --to have an array of vector3* d_sums where you keep track of the sums. OR, you could just overwrite them in the first column of accels
 
-for this one, you only need j to increment right, i is static, and youre walking down the column
-
-// we dont need j right? for every "column" we're incrementing j from 0-num
+for this one, you only need j to increment, i is static, and youre walking down the column
 */
 // does this actually need a start and end
-// does i need to be checked against NUMENTITIES SQUARED??
+// with our current 1D grid and block settings for this kernel, i could technically just = blockIdx.x
 int i = blockIdx.x * blockDim.x + threadIdx.x;
 if (i < NUMENTITIES) {
 	vector3 accel_sum={0,0,0};
@@ -112,16 +110,17 @@ void compute(){
 	// define grid with x blocks
 	dim3 dimBlock(BLOCK_SIZE, BLOCK_SIZE); // does this need a z? no? bc the threads are the ones that need the z to compute each in the vector?
 	dim3 numBlocks((NUMENTITIES+BLOCK_SIZE-1)/BLOCK_SIZE, (NUMENTITIES+BLOCK_SIZE-1)/BLOCK_SIZE);
-	dim3 dimBlock2(NUMENTITIES,1); 
+	
+	// grid for second kernel
+	dim3 dimBlock2(1,1); // one thread per block
+	dim3 numBlocks2(NUMENTITIES,1); // numentities blocks, 1D
 
-	// call kernels
-	// Q: Do i need cudaDeviceSynchronize() anywhere?
-
-	// why do you have to pass in the device variables if theyre allocated on the GPU
-	// need to fundamentally understand the relationship btwn compute.cu and nbody.cu files. what is being accessed
 	computeAccels<<<numBlocks, dimBlock>>>(d_accelvalues, d_Pos, d_mass);
-	sumAccelsAndUpdate<<<1, dimBlock2>>>(d_accelvalues, d_Pos, d_Vel);
+	sumAccelsAndUpdate<<<numBlocks2, dimBlock2>>>(d_accelvalues, d_Pos, d_Vel);
 	// update<<numBlocks, dimBlock<<(d_accelvalues,d_Pos, d_Vel);
+
+	// Q: Do i need cudaDeviceSynchronize() anywhere?
+	// need to fundamentally understand the relationship btwn compute.cu and nbody.cu files. what is being accessed
 
 
 }
