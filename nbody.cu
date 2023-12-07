@@ -181,7 +181,6 @@ int main(int argc, char **argv)
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){	
 		compute(); // we want all the memory transfers to happen outside of this loop
 	}
-	cudaDeviceSynchronize();
 	// copy relevant data to host. CPU is making this call and the CUDA API is handling the GPU actions
 	cudaMemcpy ( hPos, d_Pos, sizeof(vector3) * NUMENTITIES, cudaMemcpyDeviceToHost);
 	cudaMemcpy ( hVel, d_Vel, sizeof(vector3) * NUMENTITIES, cudaMemcpyDeviceToHost);

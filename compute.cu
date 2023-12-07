@@ -31,7 +31,7 @@ __global__ void computeAccels(vector3* d_accelvalues, vector3* d_Pos, double* d_
 		}
 		else{
 			vector3 distance;
-			for (int k=0;k<3;k++) distance[k]=d_Pos[i][k]-d_Pos[j][k]; // you need to synthreads here
+			for (int k=0;k<3;k++) distance[k]=d_Pos[i][k]-d_Pos[j][k]; // you need to synthreads here if you split up the 3 vector elements among a thread
 			double magnitude_sq=distance[0]*distance[0]+distance[1]*distance[1]+distance[2]*distance[2];
 			double magnitude=sqrt(magnitude_sq);
 			double accelmag=-1*GRAV_CONSTANT*d_mass[j]/magnitude_sq;
@@ -116,10 +116,12 @@ void compute(){
 	dim3 numBlocks2(NUMENTITIES,1); // numentities blocks, 1D
 
 	computeAccels<<<numBlocks, dimBlock>>>(d_accelvalues, d_Pos, d_mass);
+	// cudaDeviceSynchronize()?
 	sumAccelsAndUpdate<<<numBlocks2, dimBlock2>>>(d_accelvalues, d_Pos, d_Vel);
+	// cudaDeviceSynchronize()?
+
 	// update<<numBlocks, dimBlock<<(d_accelvalues,d_Pos, d_Vel);
 
-	// Q: Do i need cudaDeviceSynchronize() anywhere?
 	// need to fundamentally understand the relationship btwn compute.cu and nbody.cu files. what is being accessed
 
 
